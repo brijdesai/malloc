@@ -1,0 +1,84 @@
+Name: Brij Desai   - 201401119
+      Pinal Baldha - 201401005
+
+*******************************************************
+                         WRITEUP
+*******************************************************
+  
+
+-->   Description about Explicit Free list
+ Here we use explicit free list instead of implicit free list to improve performance of the memory allocator. 
+  We can utilize the space of payload of free block to store next and previous free block pointers. 
+  We 4 macros and 2 function to maintain explicit free list. 
+            #define GET_NEXT_FREEP(bp) (GET(bp + WSIZE))        
+            #define GET_PREV_FREEP(bp) (GET(bp))                
+            #define SET_NEXT_FREEP(bp,next) (GET_NEXT_FREEP(bp) = next)
+            #define SET_PREV_FREEP(bp,prev) (GET_PREV_FREEP(bp) = prev)
+  Above macros are subject to get and set the links of next and previous free blocks.
+            static void insert_in_freelist (void *bp);
+            static void remove_from_freelist (void *bp);
+  Above functions are subject to insert and remove free block from free list. They are called from other functions whenever needed.
+
+  Below is the overview of the original heap.
+
+          Padding       Prologue                                                                  Epilogue
+          ---------   -------------------                                                         ---------
+          | WSIZE |   | |PH 8,1| |PF 8,1|              blocks (free and allocated)                |EH 0,1 |
+          ---------   -------------------  .................................................      ---------
+                            ^
+                            heap_listp
+                            freelist_head (Initially)
+
+
+  Below is the overview of the explicit free list. It is just list of free blocks among above heap itself.
+
+          -----------------------     -----------------------                                 ---------------------------------------------    
+          | |H| NULL | next |F| |     | |H| prev | next |F| |                                 | |H| prev | Address of Prologue Footer |F| |
+          -----------------------     ----------------------- ..............................  ---------------------------------------------
+                ^
+                freelist_head
+                (Pointing to the start of the free list)
+
+-->    Changes in find_fit() 
+  We use this free list to find a block with requested size by traversing explicit free list. It improves the performance because 
+we don't need to track all the blocks now.
+
+-->    Changes in mm_realloc()  
+  It may happen that reallocation of the block is requested and next block
+is free then we should check the combined size instead of directly allocating new block. If check succeed then we merge 
+that two blocks and return the same block pointer otherwise allocate a new block and copy the old data into new block, free 
+the old block and return the new block pointer.
+
+-->    Changes in checkheap(), the heap consistency checker.    
+  We made checkheap() to use explict free list instead of implicit free list. It does not improve performance. There is no need to traverse
+through all the blocks for checking heap consistency. So we changed traversal path of the checkheap() function.
+
+NOTE:
+  When we insert the free block in the free list for the first time, freelist_head was pointing to the prologue's footer, so if we set previous link of 
+freelist_head to the block(which we are inserting) then prolouge's footer will change that is undesirable. So we take care of this case by adding condition in insert_in_freelist() function.
+  When we remove the last block from the free list, the previous link of prologue footer(which actually does not exists) will be set to previous block of
+the last block that is also undesirable.  So we take care of this case by adding condition in remove_from_freelist() function.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
